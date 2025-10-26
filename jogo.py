@@ -17,17 +17,17 @@ efeitos_ativos = True
 estado_jogo = "menu"
 
 player_ani = {
-    parado = ["player_parado0", "player_parado1", "player_parado2", "player_Parado3"]
-    andando = ["player_andando0", "player_andando1", "player_andando2", "player_andando3"]
-    dano = ["player_dano0", "player_dano1", "player_dano2", "player_dano3"]
-    morte = ["player_morte0", "player_morte1", "player_morte2", "player_morte3"]
-    ataque1 = ["player_ataque1_0", "player_ataque1_1", "player_ataque1_2", "player_ataque1_3", "player_ataque1_4"]
+    "parado": ["player_parado0", "player_parado1", "player_parado2", "player_parado3"],
+    "andando": ["player_andando0", "player_andando1", "player_andando2", "player_andando3"],
+    "dano": ["player_dano0", "player_dano1", "player_dano2", "player_dano3"],
+    "morte": ["player_morte0", "player_morte1", "player_morte2", "player_morte3"],
+    "ataque1": ["player_ataque1_0", "player_ataque1_1", "player_ataque1_2", "player_ataque1_3", "player_ataque1_4"]
 }
 jogador = Actor("player_parado0", (WIDTH//2, HEIGHT//2))
 jogador.vida = 10
 jogador.estado_ani = "parado"
 jogador.frame_atual = 0
-jogador.tempo_animacao = 0
+jogador.tempo_ani = 0
 jogador.velocidade = 3
 inimigo = Actor("inimigo_parado0", (100, 100))
 
@@ -74,10 +74,55 @@ def gerar_inimigos():
     for _ in range(5):
         x = random.randint(3, MAP_WIDTH - 2)
         y = random.randint(3, MAP_HEIGHT - 2)
-        inimigo = Actor("inimigo_parado0", (x*TILE_SIZE + TILE_SIZE//2, y*TILE_SIZE + TILE_SIZE//2))
+        inimigo = Actor("inimigo_parado0", (x, y))
         inimigo.vida = 3
+        inimigo.velocidade = 1
         inimigos.append(inimigo)
+        
+def update():
+    if estado_jogo == "jogando":
+        movimentos()
+        animar_p()
 
+def movimentos():
+    mover_p
+
+def mover_p():
+    dx, dy = 0, 0
+
+    if keyboard.a or keyboard.left:
+        dx = -jogador.velocidade
+    if keyboard.d or keyboard.right:
+        dx = jogador.velocidade
+    if keyboard.w or keyboard.up:
+        dy = -jogador.velocidade
+    if keyboard.s or keyboard.down:
+        dy = jogador.velocidade
+
+    x_atual = jogador.x + dx
+    y_atual = jogador.y + dy
+
+    if 0 <= nova_x <= WIDTH:
+        jogador.x = nova_x
+    if 0 <= nova_y <= HEIGHT:
+        jogador.y = nova_y
+
+    if dx != 0 or dy != 0:
+        jogador.estado_ani = "andando"
+    else:
+        jogador.estado_ani = "parado"
+    if keyboard.space:
+        jogador.estado_ani = "ataque"
+        atacar()
+def animar_p():
+    jogador.tempo_ani += 1
+    lista_frames = player_ani[jogador.estado_ani]
+    if jogador.tempo_ani % 8 == 0:
+        jogador.frame_atual = (jogador.frame_atual + 1) % len(lista_frames)
+        jogador.image = lista_frames[jogador.frame_atual]
+    if jogador.estado_ani == "ataque" and jogador.frame_atual == len(lista_frames) - 1:
+        jogador.estado_ani = "parado"
+        jogador.frame_atual = 0
 
 gerar_inimigos()
 pgzrun.go()
