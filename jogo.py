@@ -52,6 +52,10 @@ tempo_spawn_inimigos = 0
 inimigos_ativos = False
 kill = 0
 
+round_atual = 1
+inimigos_por_round = 5
+max_inimigos_por_round = 20
+
 def draw():
     screen.clear()
     if estado_jogo == "menu":
@@ -82,6 +86,7 @@ def draw():
             inimigo.draw()
         screen.draw.text(f"Vida: {jogador.vida}", (10, 10), color="white")
         screen.draw.text("WASD para mover, Espaco para atacar", (10, 40), color="yellow", fontsize=20)
+        screen.draw.text(f"Inimigos: {len(inimigos)}/{min(inimigos_por_round, max_inimigos_por_round)}", (10, 130), color="orange", fontsize=18)
         screen.draw.text(f"Kills: {kill}", (10, 70), color="red")
         if jogador.tempo_inv > 0:
             screen.draw.text("INVENCIVEL!", (WIDTH//2-60, 30), color="red", fontsize=24)
@@ -93,10 +98,10 @@ def on_mouse_down(pos):
     if botao_comecar.collidepoint(pos):
         estado_jogo = "jogando"
         if efeitos_ativos:
-            sounds.inicio.play
+            sounds.inicio.play()
     if botao_sair.collidepoint(pos):
         if efeitos_ativos:
-            sounds.inicio.play
+            sounds.inicio.play()
         exit()
     if botao_musica.collidepoint(pos):
         musica_ativa = not musica_ativa
@@ -104,14 +109,15 @@ def on_mouse_down(pos):
             music.stop()
             musica_tocando = None
         if efeitos_ativos:
-            sounds.inicio.play
+            sounds.inicio.play()
     if botao_efeitos.collidepoint(pos):
         efeitos_ativos = not efeitos_ativos
 
 def gerar_inimigos():
-    global inimigos
+    global inimigos, round_atual, inimigos_por_round, inimigos_ativos, tempo_spawn_inimigos
     inimigos = []
-    for _ in range(5):
+    quantidade = min(inimigos_por_round, max_inimigos_por_round)
+    for _ in range(quantidade):
         x = random.randint(50, WIDTH - 50)
         y = random.randint(50, HEIGHT - 50)
         inimigo = Actor("inimigo_parado0", (x,y))
@@ -122,6 +128,7 @@ def gerar_inimigos():
         inimigo.frame_atual = 0
         inimigo.tempo_ani = 0
         inimigos.append(inimigo)
+    inimigos_ativos = True
         
 def update():
     global tempo_a_inimigos, tempo_spawn_inimigos, inimigos_ativos, musica_tocando
@@ -130,19 +137,21 @@ def update():
         movimentos()
         animar_p()
         animar_i()
-        if not inimigos_ativos and len(inimigos) == 0:
-            tempo_spawn_inimigos += 1
-            if tempo_spawn_inimigos >= 90:
-                gerar_inimigos()
-                inimigos_ativos = True
-                tempo_spawn_inimigos = 0
+        if len(inimigos) == 0:
+            if not inimigos_ativos:
+                tempo_spawn_inimigos += 1
+                if tempo_spawn_inimigos >= 60: 
+                    gerar_inimigos()
+                    inimigos_ativos = True
+                    tempo_spawn_inimigos = 0
+            elif inimigos_ativos:
+                inimigos_ativos = False
         if jogador.tempo_inv > 0:
             jogador.tempo_inv -= 1
-        
-        tempo_a_inimigos += 1
-        if tempo_a_inimigos >= 60:
-            inimigos_a()
-            tempo_a_inimigos = 0
+            tempo_a_inimigos += 1
+            if tempo_a_inimigos >= 60:
+                inimigos_a()
+                tempo_a_inimigos = 0
     if estado_jogo == "menu" and musica_ativa:
         if musica_tocando != "menu":
             music.play("musica_menu")
@@ -157,7 +166,6 @@ def update():
         if musica_tocando is not None:
             music.stop()
             musica_tocando = None
-
 
 def movimentos():
     mover_p()
@@ -238,38 +246,44 @@ def mover_i():
         inimigo.tempo_ani += 1
 
 def animar_i():
-    global kill, inimigos_ativos
+    global kill, inimigos_ativos, round_atual, inimigos_por_round
 
     inimigos_mortos = []
     
-    for inimigo in inimigos:
+    for inimigo in inimigos[:]:
         inimigo.tempo_ani += 1
         if inimigo.tempo_ani % 8 == 0:
             lista_frames = adv_ani[inimigo.estado_ani]
             inimigo.frame_atual = (inimigo.frame_atual + 1) % len(lista_frames)
             inimigo.image = lista_frames[inimigo.frame_atual]
-        if (inimigo.estado_ani == "dano" or (inimigo.estado_ani == "ataque1" or inimigo.estado_ani == "ataque2")) and inimigo.frame_atual == len(adv_ani[inimigo.estado_ani]) - 1:
-            if "e" in inimigo.estado_ani:
-                inimigo.estado_ani = "paradoe"
-            else:
-                inimigo.estado_ani = "parado"
-            inimigo.frame_atual = 0
         if inimigo.estado_ani == "morte":
             lista_frames = adv_ani["morte"]
             if inimigo.frame_atual >= len(lista_frames) - 1:
                 inimigos_mortos.append(inimigo)
+            
+        elif (inimigo.estado_ani == "dano" or inimigo.estado_ani == "ataque1" or inimigo.estado_ani == "ataque2") and inimigo.frame_atual == len(adv_ani[inimigo.estado_ani]) - 1:
+            if "e" in inimigo.estado_ani:
+                inimigo.estado_ani = "paradoe"
+            else:
+                inimigo.estado_ani = "parado"
+                inimigo.frame_atual = 0
     
     for inimigo in inimigos_mortos:
-        inimigos.remove(inimigo)
-        kill += 1
-        if efeitos_ativos:
-            sounds.morte.play()
-    if len(inimigos) == 0 and inimigos_ativos:
+        if inimigo in inimigos:  
+            inimigos.remove(inimigo)
+            kill += 1
+            if efeitos_ativos:
+                sounds.morte.play()
+    if len(inimigos_mortos) > 0 and len(inimigos) == 0 and inimigos_ativos:
         inimigos_ativos = False
+        round_atual += 1
+        inimigos_por_round += 2
+        if efeitos_ativos:
+            sounds.powerup.play()
 
 def atacar():
     if efeitos_ativos:
-        sounds.ataque.play
+        sounds.ataque.play()
     for inimigo in inimigos[:]:
         distancia = ((jogador.x - inimigo.x)** 2 + (jogador.y - inimigo.y) ** 2) ** 0.5
         if distancia < 45 and inimigo.estado_ani != "morte":
@@ -318,11 +332,14 @@ def checar_comb():
                 game_over()
 
 def game_over():
-    global estado_jogo
+    global estado_jogo, round_atual, inimigos_por_round, inimigos_ativos
     estado_jogo = "menu"
     jogador.vida = 10
     jogador.pos = (WIDTH//2, HEIGHT//2)
     jogador.tempo_inv = 0
+    round_atual = 1
+    inimigos_por_round = 5
+    inimigos_ativos = False
     inimigos.clear()
     inimigos_ativos = False
 
