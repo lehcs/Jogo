@@ -94,9 +94,10 @@ def draw():
             screen.draw.text("GAME OVER!", (WIDTH//2 - 200, HEIGHT//2), color="red", fontsize=100)
 
 def on_mouse_down(pos):
-    global estado_jogo, musica_ativa, efeitos_ativos
+    global estado_jogo, musica_ativa, efeitos_ativos, kill
     if botao_comecar.collidepoint(pos):
         estado_jogo = "jogando"
+        kill = 0
         if efeitos_ativos:
             sounds.inicio.play()
     if botao_sair.collidepoint(pos):
@@ -342,5 +343,6 @@ def game_over():
     inimigos_ativos = False
     inimigos.clear()
     inimigos_ativos = False
+    kill = 0
 
 pgzrun.go()
