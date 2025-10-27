@@ -18,10 +18,23 @@ estado_jogo = "menu"
 
 player_ani = {
     "parado": ["player_parado0", "player_parado1", "player_parado2", "player_parado3"],
+    "paradoe": ["player_paradoe0", "player_paradoe1", "player_paradoe2", "player_paradoe3"],
     "andando": ["player_andando0", "player_andando1", "player_andando2", "player_andando3"],
-    "dano": ["player_dano0", "player_dano1", "player_dano2", "player_dano3"],
+    "andandoe": ["player_andando_e0", "player_andando_e1", "player_andando_e2", "player_andando_e3"],
+    "dano": ["player_dano0"],
     "morte": ["player_morte0", "player_morte1", "player_morte2", "player_morte3"],
-    "ataque1": ["player_ataque1_0", "player_ataque1_1", "player_ataque1_2", "player_ataque1_3", "player_ataque1_4"]
+    "ataque1": ["player_ataque10", "player_ataque11", "player_ataque12", "player_ataque13"],
+    "ataque2": ["player_ataque_e0", "player_ataque_e1", "player_ataque_e2", "player_ataque_e3"]
+}
+adv_ani = {
+    "parado": ["inimigo_parado0", "inimigo_parado1", "inimigo_parado2", "inimigo_parado3", "inimigo_parado4"],
+    "paradoe": ["inimigo_paradoe0", "inimigo_paradoe1", "inimigo_paradoe2", "inimigo_paradoe3"],
+    "andando": ["inimigo_andando0", "inimigo_andando1", "inimigo_andando2", "inimigo_andando3", "inimigo_andando4", "inimigo_andando5"],
+    "andandoe": ["inimigo_andandoe0", "inimigo_andandoe1", "inimigo_andandoe2", "inimigo_andandoe3", "inimigo_andandoe4", "inimigo_andandoe5"],
+    "dano": ["inimigo_dano0", "inimigo_dano1", "inimigo_dano2", "inimigo_dano3", "inimigo_dano4"],
+    "morte": ["inimigo_morte0", "inimigo_morte1", "inimigo_morte2", "inimigo_morte3", "inimigo_morte4", "inimigo_morte5", "inimigo_morte6"],
+    "ataque1": ["inimigo_ataque0", "inimigo_ataque1", "inimigo_ataque2", "inimigo_ataque3", "inimigo_ataque4"],
+    "ataque2": ["inimigo_ataque_e0", "inimigo_ataque_e1", "inimigo_ataque_e2", "inimigo_ataque_e3", "inimigo_ataque_e4"]
 }
 jogador = Actor("player_parado0", (WIDTH//2, HEIGHT//2))
 jogador.vida = 10
@@ -33,11 +46,15 @@ jogador.tempo_inv = 0
 
 inimigos = []
 tempo_a_inimigos = 0
+tempo_spawn_inimigos = 0
+inimigos_ativos = False
 kill = 0
+
 def draw():
     screen.clear()
     if estado_jogo == "menu":
         screen.clear()
+        screen.draw.text("ROGUELIKE", ((WIDTH//2)- 200, 100), color="white", fontsize=100)
         screen.blit("placa_0", (WIDTH//2-72, 390))
         botao_comecar.draw()
         botao_sair.draw()
@@ -54,7 +71,10 @@ def draw():
         botao_efeitos.draw()
     elif estado_jogo == "jogando":
         screen.clear()
-        screen.fill((20, 20, 40))
+        screen.fill((30, 25, 20))
+        for x in range(0, WIDTH, 48):
+            for y in range(0, HEIGHT, 48):
+                screen.blit("chao_pedra", (x, y))
         jogador.draw()
         for inimigo in inimigos:
             inimigo.draw()
@@ -63,6 +83,8 @@ def draw():
         screen.draw.text(f"Kills: {kill}", (10, 70), color="red")
         if jogador.tempo_inv > 0:
             screen.draw.text("INVENCIVEL!", (WIDTH//2-60, 30), color="red", fontsize=24)
+        if jogador.vida <= 0: 
+            screen.draw.text("GAME OVER!", (WIDTH//2 - 200, HEIGHT//2), color="red", fontsize=100)
 
 def on_mouse_down(pos):
     global estado_jogo, musica_ativa, efeitos_ativos
@@ -81,18 +103,28 @@ def gerar_inimigos():
     for _ in range(5):
         x = random.randint(50, WIDTH - 50)
         y = random.randint(50, HEIGHT - 50)
-        inimigo = Actor("inimigo_parado0", (x, y))
+        inimigo = Actor("inimigo_parado0", (x,y))
         inimigo.vida = 3
-        inimigo.velocidade = 1.5
+        inimigo.velocidade = 1
         inimigo.tempo_a = 0
+        inimigo.estado_ani = "parado"
+        inimigo.frame_atual = 0
+        inimigo.tempo_ani = 0
         inimigos.append(inimigo)
         
 def update():
-    global tempo_a_inimigos
+    global tempo_a_inimigos, tempo_spawn_inimigos, inimigos_ativos
 
     if estado_jogo == "jogando":
         movimentos()
         animar_p()
+        animar_i()
+        if not inimigos_ativos and len(inimigos) == 0:
+            tempo_spawn_inimigos += 1
+            if tempo_spawn_inimigos >= 90:
+                gerar_inimigos()
+                inimigos_ativos = True
+                tempo_spawn_inimigos = 0
         if jogador.tempo_inv > 0:
             jogador.tempo_inv -= 1
         
@@ -111,8 +143,10 @@ def mover_p():
 
     if keyboard.a or keyboard.left:
         dx = -jogador.velocidade
+        jogador.estado_ani = "andandoe"
     if keyboard.d or keyboard.right:
         dx = jogador.velocidade
+        jogador.estado_ani = "andando"
     if keyboard.w or keyboard.up:
         dy = -jogador.velocidade
     if keyboard.s or keyboard.down:
@@ -126,12 +160,16 @@ def mover_p():
     if 0 <= y_atual <= HEIGHT:
         jogador.y = y_atual
 
-    if dx != 0 or dy != 0:
-        jogador.estado_ani = "andando"
-    else:
-        jogador.estado_ani = "parado"
-    if keyboard.space:
+    if dx == 0 and dy == 0:
+        if jogador.estado_ani == "andandoe":
+            jogador.estado_ani = "paradoe"
+        elif jogador.estado_ani == "andando":
+            jogador.estado_ani = "parado"
+    if keyboard.space and (jogador.estado_ani == "parado" or jogador.estado_ani == "andando"):
         jogador.estado_ani = "ataque1"
+        atacar()
+    elif keyboard.space and (jogador.estado_ani == "paradoe" or jogador.estado_ani == "andandoe"):
+        jogador.estado_ani = "ataque2"
         atacar()
         
 def animar_p():
@@ -143,49 +181,102 @@ def animar_p():
     if (jogador.estado_ani == "ataque1" or jogador.estado_ani == "dano") and jogador.frame_atual == len(lista_frames) - 1:
         jogador.estado_ani = "parado"
         jogador.frame_atual = 0
+    elif (jogador.estado_ani == "ataque2" or jogador.estado_ani == "dano") and jogador.frame_atual == len(lista_frames) - 1:
+        jogador.estado_ani = "paradoe"
+        jogador.frame_atual = 0
 
 def mover_i():
     for inimigo in inimigos:
-        dx = jogador.x - inimigo.x
-        dy = jogador.y - inimigo.y
-        distancia = max(1, (dx ** 2 + dy ** 2) ** 0.5)
-        dx /= distancia
-        dy /= distancia
-        inimigo.x += dx * inimigo.velocidade
-        inimigo.y += dy * inimigo.velocidade
+        direcao_x = jogador.x - inimigo.x
+        direcao_y = jogador.y - inimigo.y
+        if inimigo.estado_ani == "morte":
+            continue
+        if inimigo.tempo_ani % 120 < 60:
+            if direcao_x > 0:
+                inimigo.x += inimigo.velocidade
+                inimigo.estado_ani = "andando"
+            elif direcao_x < 0:
+                inimigo.x -= inimigo.velocidade
+                inimigo.estado_ani = "andandoe"
+        else:
+            if direcao_y > 0:
+                inimigo.y += inimigo.velocidade
+            elif direcao_y < 0:
+                inimigo.y -= inimigo.velocidade
+        if abs(direcao_x) < 5 and abs(direcao_y) < 5:
+            if "e" in inimigo.estado_ani:
+                inimigo.estado_ani = "paradoe"
+            else:
+                inimigo.estado_ani = "parado"
+        
+        inimigo.tempo_ani += 1
+
+def animar_i():
+    global kill, inimigos_ativos
+
+    inimigos_mortos = []
+    
+    for inimigo in inimigos:
+        inimigo.tempo_ani += 1
+        if inimigo.tempo_ani % 8 == 0:
+            lista_frames = adv_ani[inimigo.estado_ani]
+            inimigo.frame_atual = (inimigo.frame_atual + 1) % len(lista_frames)
+            inimigo.image = lista_frames[inimigo.frame_atual]
+        if (inimigo.estado_ani == "dano" or (inimigo.estado_ani == "ataque1" or inimigo.estado_ani == "ataque2")) and inimigo.frame_atual == len(adv_ani[inimigo.estado_ani]) - 1:
+            if "e" in inimigo.estado_ani:
+                inimigo.estado_ani = "paradoe"
+            else:
+                inimigo.estado_ani = "parado"
+            inimigo.frame_atual = 0
+        if inimigo.estado_ani == "morte":
+            lista_frames = adv_ani["morte"]
+            if inimigo.frame_atual >= len(lista_frames) - 1:
+                inimigos_mortos.append(inimigo)
+    
+    for inimigo in inimigos_mortos:
+        inimigos.remove(inimigo)
+        kill += 1
+    if len(inimigos) == 0 and inimigos_ativos:
+        inimigos_ativos = False
 
 def atacar():
-    global kill
     for inimigo in inimigos[:]:
         distancia = ((jogador.x - inimigo.x)** 2 + (jogador.y - inimigo.y) ** 2) ** 0.5
-        if distancia < 30:
+        if distancia < 45 and inimigo.estado_ani != "morte":
             inimigo.vida -= 1
+            inimigo.estado_ani = "dano"
             if inimigo.vida <= 0:
-                inimigos.remove(inimigo)
-                kill += 1
-                if len(inimigos) == 0:
-                    gerar_inimigos()
+                inimigo.estado_ani = "morte"
+                inimigo.frame_atual = 0
+                inimigo.tempo_ani = 0
+            inimigo.frame_atual = 0
+            inimigo.tempo_ani = 0
 
 def inimigos_a():
-    for inimigo in inimigos:
-            distancia = ((jogador.x - inimigo.x) ** 2 + (jogador.y - inimigo.y) ** 2) ** 0.5
-            if distancia < 40:
-                if jogador.tempo_inv <= 0:
-                    jogador.vida -= 1
-                    jogador.tempo_inv = 30
-                    jogador.estado_ani = "dano"
+    for inimigo in inimigos[:]:
+        if inimigo.estado_ani == "morte":
+            continue
+        distancia = ((jogador.x - inimigo.x) ** 2 + (jogador.y - inimigo.y) ** 2) ** 0.5
+        if distancia < 25:
+            if jogador.tempo_inv <= 0:
+                jogador.vida -= 1
+                jogador.tempo_inv = 30
+                jogador.estado_ani = "dano"
+        if jogador.x > inimigo.x:
+            inimigo.estado_ani = "ataque1"
+        else: 
+            inimigo.estado_ani = "ataque2"
 
 def checar_comb():
     for inimigo in inimigos:
         distancia = ((jogador.x - inimigo.x) ** 2 + (jogador.y - inimigo.y) ** 2) ** 0.5
-        if distancia < 40:
+        if distancia < 25:
             if jogador.tempo_inv <= 0:
                 jogador.vida -= 0.5
                 jogador.tempo_inv = 20
             
             if jogador.vida <= 0:
                 jogador.estado_ani = "morte"
-                screen.draw.text("GAME OVER!", (WIDTH//2, HEIGHT//2), color="red", fontsize=100)
                 game_over()
 
 def game_over():
@@ -195,5 +286,6 @@ def game_over():
     jogador.pos = (WIDTH//2, HEIGHT//2)
     jogador.tempo_inv = 0
     inimigos.clear()
-gerar_inimigos()
+    inimigos_ativos = False
+
 pgzrun.go()
