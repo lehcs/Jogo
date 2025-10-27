@@ -16,6 +16,8 @@ musica_ativa = True
 efeitos_ativos = True
 estado_jogo = "menu"
 
+musica_tocando = None
+
 player_ani = {
     "parado": ["player_parado0", "player_parado1", "player_parado2", "player_parado3"],
     "paradoe": ["player_paradoe0", "player_paradoe1", "player_paradoe2", "player_paradoe3"],
@@ -90,10 +92,19 @@ def on_mouse_down(pos):
     global estado_jogo, musica_ativa, efeitos_ativos
     if botao_comecar.collidepoint(pos):
         estado_jogo = "jogando"
+        if efeitos_ativos:
+            sounds.inicio.play
     if botao_sair.collidepoint(pos):
+        if efeitos_ativos:
+            sounds.inicio.play
         exit()
     if botao_musica.collidepoint(pos):
         musica_ativa = not musica_ativa
+        if not musica_ativa:
+            music.stop()
+            musica_tocando = None
+        if efeitos_ativos:
+            sounds.inicio.play
     if botao_efeitos.collidepoint(pos):
         efeitos_ativos = not efeitos_ativos
 
@@ -113,7 +124,7 @@ def gerar_inimigos():
         inimigos.append(inimigo)
         
 def update():
-    global tempo_a_inimigos, tempo_spawn_inimigos, inimigos_ativos
+    global tempo_a_inimigos, tempo_spawn_inimigos, inimigos_ativos, musica_tocando
 
     if estado_jogo == "jogando":
         movimentos()
@@ -132,6 +143,21 @@ def update():
         if tempo_a_inimigos >= 60:
             inimigos_a()
             tempo_a_inimigos = 0
+    if estado_jogo == "menu" and musica_ativa:
+        if musica_tocando != "menu":
+            music.play("musica_menu")
+            music.set_volume(0.7)
+            musica_tocando = "menu"
+    elif estado_jogo == "jogando" and musica_ativa:
+        if musica_tocando != "jogo":
+            music.play("musica_jogo")
+            music.set_volume(0.5)
+            musica_tocando = "jogo"
+    else:
+        if musica_tocando is not None:
+            music.stop()
+            musica_tocando = None
+
 
 def movimentos():
     mover_p()
@@ -236,15 +262,21 @@ def animar_i():
     for inimigo in inimigos_mortos:
         inimigos.remove(inimigo)
         kill += 1
+        if efeitos_ativos:
+            sounds.morte.play()
     if len(inimigos) == 0 and inimigos_ativos:
         inimigos_ativos = False
 
 def atacar():
+    if efeitos_ativos:
+        sounds.ataque.play
     for inimigo in inimigos[:]:
         distancia = ((jogador.x - inimigo.x)** 2 + (jogador.y - inimigo.y) ** 2) ** 0.5
         if distancia < 45 and inimigo.estado_ani != "morte":
             inimigo.vida -= 1
             inimigo.estado_ani = "dano"
+            if efeitos_ativos:
+                sounds.dano.play()
             if inimigo.vida <= 0:
                 inimigo.estado_ani = "morte"
                 inimigo.frame_atual = 0
@@ -262,6 +294,8 @@ def inimigos_a():
                 jogador.vida -= 1
                 jogador.tempo_inv = 30
                 jogador.estado_ani = "dano"
+                if efeitos_ativos:
+                    sounds.dano.play()
         if jogador.x > inimigo.x:
             inimigo.estado_ani = "ataque1"
         else: 
@@ -274,9 +308,13 @@ def checar_comb():
             if jogador.tempo_inv <= 0:
                 jogador.vida -= 0.5
                 jogador.tempo_inv = 20
+                if efeitos_ativos:
+                    sounds.dano.play()
             
             if jogador.vida <= 0:
                 jogador.estado_ani = "morte"
+                if efeitos_ativos:
+                    sounds.gameover.play()
                 game_over()
 
 def game_over():
