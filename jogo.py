@@ -150,9 +150,9 @@ def update():
         if jogador.tempo_inv > 0:
             jogador.tempo_inv -= 1
             tempo_a_inimigos += 1
-            if tempo_a_inimigos >= 60:
+            if tempo_a_inimigos >= 0:
                 inimigos_a()
-                tempo_a_inimigos = 0
+                tempo_a_inimigos = 20
     if estado_jogo == "menu" and musica_ativa:
         if musica_tocando != "menu":
             music.play("musica_menu")
@@ -323,6 +323,7 @@ def checar_comb():
             if jogador.tempo_inv <= 0:
                 jogador.vida -= 0.5
                 jogador.tempo_inv = 20
+                jogador.estado_ani = "dano"
                 if efeitos_ativos:
                     sounds.dano.play()
             
